@@ -23,7 +23,7 @@ public class Main extends JFrame {
     private File playFile;
 
     public Main() {
-        setSize(600, 400);
+        setSize(850, 600);
         setTitle("TTS QQ:551304760");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 
