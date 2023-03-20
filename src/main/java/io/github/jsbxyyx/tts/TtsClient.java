@@ -52,7 +52,7 @@ public class TtsClient extends WebSocketClient {
 
     public void createContent(String ssml, TtsCallback callback) throws Exception {
         this.ssml = ssml;
-        File file = new File(base_dir + "/tts-" + getXTime() + ".mp3");
+        File file = new File(base_dir + "/tts-" + getFilename() + ".mp3");
         output = new FileOutputStream(file, true);
         connect();
         latch.await();
@@ -155,6 +155,11 @@ public class TtsClient extends WebSocketClient {
         x_time = String.format("%04d-%02d-%02dT%02d:%02d:%02d.%03dZ", year, month, day, hour, minute, second, millisecond);
         log(":: time ::\r\n" + x_time + "\r\n");
         return x_time;
+    }
+
+    String getFilename() {
+        String xTime = getXTime();
+        return xTime.replace(":", "-").replace(".", "-");
     }
 
     void log(String str) {
