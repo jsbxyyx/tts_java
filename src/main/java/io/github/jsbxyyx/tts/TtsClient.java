@@ -1,34 +1,35 @@
 package io.github.jsbxyyx.tts;
 
-import com.google.common.base.Strings;
-import com.google.common.base.Throwables;
-import com.google.common.primitives.Bytes;
 import org.java_websocket.client.WebSocketClient;
 import org.java_websocket.handshake.ServerHandshake;
-import org.joda.time.LocalDate;
-import org.joda.time.LocalTime;
 
 import javax.swing.*;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.net.URI;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
+import java.util.Calendar;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 
+/**
+ * @author jsbxyyx
+ */
 public class TtsClient extends WebSocketClient {
 
+    private static final String base_dir = System.getProperty("tts.output.dir", System.getProperty("user.home"));
     private static String req_id = UUID.randomUUID().toString().replace("-", "").toUpperCase();
+    private static final byte[] sep = "Path:audio\r\n".getBytes(StandardCharsets.UTF_8);
 
-
+    private final CountDownLatch latch = new CountDownLatch(1);
     private String x_time;
     private FileOutputStream output;
-    private final CountDownLatch latch = new CountDownLatch(1);
-    private final byte[] sep = "Path:audio\r\n".getBytes(StandardCharsets.UTF_8);
-
     private String ssml;
 
     private JTextArea log;
@@ -49,15 +50,17 @@ public class TtsClient extends WebSocketClient {
                 });
     }
 
-    public void createContent(String ssml) throws Exception {
+    public void createContent(String ssml, TtsCallback callback) throws Exception {
         this.ssml = ssml;
-        File file = new File(System.getProperty("tts.output.dir", System.getProperty("user.home")) + "/tts-" + getXTime() + ".mp3");
+        File file = new File(base_dir + "/tts-" + getXTime() + ".mp3");
         output = new FileOutputStream(file, true);
         connect();
         latch.await();
         close();
-        append(":: file :: " + file.getAbsolutePath() + "\r\n");
-        play(file);
+        log(":: file :: \r\n" + file.getAbsolutePath() + "\r\n");
+        if (callback != null) {
+            callback.call(file);
+        }
         reset();
     }
 
@@ -70,7 +73,7 @@ public class TtsClient extends WebSocketClient {
 
     @Override
     public void onMessage(String message) {
-        append(":: onMessage ::\r\n" + message + "\r\n");
+        log(":: onMessage ::\r\n" + message + "\r\n");
         if (message.indexOf("Path:turn.end") > 0) {
             latch.countDown();
         }
@@ -79,25 +82,26 @@ public class TtsClient extends WebSocketClient {
     @Override
     public void onMessage(ByteBuffer bytes) {
         byte[] rawData = bytes.array();
-        int index = Bytes.indexOf(rawData, sep);
+        log(":: onMessage blob :: " + rawData.length + "\r\n");
+        int index = indexOf(rawData, sep);
         byte[] data = new byte[rawData.length - (index + sep.length)];
         System.arraycopy(rawData, index + sep.length, data, 0, data.length);
         try {
             output.write(data);
             output.flush();
         } catch (IOException e) {
-            append(":: onMessage ::\r\n" + Throwables.getStackTraceAsString(e) + "\r\n");
+            log(":: onMessage ::\r\n" + getStackTraceAsString(e) + "\r\n");
         }
     }
 
     @Override
     public void onClose(int code, String reason, boolean remote) {
-        append(":: onClose ::\r\n" + code + " :: " + reason + " :: " + remote);
+        log(":: onClose ::\r\n" + code + " :: " + reason + " :: " + remote + "\r\n");
     }
 
     @Override
     public void onError(Exception ex) {
-        append(":: onError ::\r\n" + Throwables.getStackTraceAsString(ex) + "\r\n");
+        log(":: onError ::\r\n" + getStackTraceAsString(ex) + "\r\n");
     }
 
     void payload_1() {
@@ -105,7 +109,7 @@ public class TtsClient extends WebSocketClient {
         String message_1 = "Path : speech.config\r\nX-RequestId: " + req_id + "\r\nX-Timestamp: " +
                 getXTime() + "\r\nContent-Type: application/json\r\n\r\n" + payload_1;
         send(message_1);
-        append(":: payload_1 :: \r\n" + message_1 + "\r\n");
+        log(":: payload_1 :: \r\n" + message_1 + "\r\n");
     }
 
     void payload_2() {
@@ -113,11 +117,11 @@ public class TtsClient extends WebSocketClient {
         String message_2 = "Path : synthesis.context\r\nX-RequestId: " + req_id + "\r\nX-Timestamp: " +
                 getXTime() + "\r\nContent-Type: application/json\r\n\r\n" + payload_2;
         send(message_2);
-        append(":: payload_2 :: \r\n" + message_2 + "\r\n");
+        log(":: payload_2 :: \r\n" + message_2 + "\r\n");
     }
 
     void payload_3() {
-        if (Strings.isNullOrEmpty(ssml)) {
+        if (isNullOrEmpty(ssml)) {
             this.ssml = "<speak xmlns=\"http://www.w3.org/2001/10/synthesis\" xmlns:mstts=\"http://www.w3.org/2001/mstts\" xmlns:emo=\"http://www.w3.org/2009/10/emotionml\" version=\"1.0\" xml:lang=\"en-US\">\n" +
                     "<voice name=\"zh-CN-XiaoxiaoNeural\">\n" +
                     "<prosody rate=\"0%\" pitch=\"0%\">\n" +
@@ -130,32 +134,38 @@ public class TtsClient extends WebSocketClient {
         String message_3 = "Path: ssml\r\nX-RequestId: " + req_id + "\r\nX-Timestamp: " +
                 getXTime() + "\r\nContent-Type: application/ssml+xml\r\n\r\n" + payload_3;
         send(message_3);
-        append(":: payload_3 :: \r\n" + message_3 + "\r\n");
+        log(":: payload_3 :: \r\n" + message_3 + "\r\n");
     }
 
     String getXTime() {
         if (x_time != null) {
             return x_time;
         }
-        LocalDate now = LocalDate.now();
-        String date = now.toString("yyyy-MM-dd");
-        LocalTime now1 = LocalTime.now();
-        String time = now1.toString("HH:mm:ss.SSS");
-        x_time = date + "T" + time + "Z";
-        append(":: time ::\r\n" + x_time + "\r\n");
+        Calendar cal = Calendar.getInstance();
+        cal.setTime(new Date());
+
+        int year = cal.get(Calendar.YEAR);
+        int month = cal.get(Calendar.MONTH) + 1;
+        int day = cal.get(Calendar.DAY_OF_MONTH);
+        int hour = cal.get(Calendar.HOUR_OF_DAY);
+        int minute = cal.get(Calendar.MINUTE);
+        int second = cal.get(Calendar.SECOND);
+        int millisecond = cal.get(Calendar.MILLISECOND);
+
+        x_time = String.format("%04d-%02d-%02dT%02d:%02d:%02d.%03dZ", year, month, day, hour, minute, second, millisecond);
+        log(":: time ::\r\n" + x_time + "\r\n");
         return x_time;
     }
 
-    void append(String str) {
+    void log(String str) {
         if (log != null) {
             if (log.getText().length() > 5000) {
                 log.setText(log.getText().substring(5000));
             }
             log.append(str);
             log.setCaretPosition(log.getDocument().getLength());
-        } else {
-            System.out.println(str);
         }
+        System.out.println(str);
     }
 
     void reset() {
@@ -163,8 +173,32 @@ public class TtsClient extends WebSocketClient {
         x_time = null;
     }
 
-    void play(File file) {
+    static int indexOf(byte[] array, byte[] target) {
+        if (array == null) throw new NullPointerException("array");
+        if (target == null) throw new NullPointerException("target");
+        if (target.length == 0) {
+            return 0;
+        }
+        outer:
+        for (int i = 0; i < array.length - target.length + 1; i++) {
+            for (int j = 0; j < target.length; j++) {
+                if (array[i + j] != target[j]) {
+                    continue outer;
+                }
+            }
+            return i;
+        }
+        return -1;
+    }
 
+    static String getStackTraceAsString(Throwable throwable) {
+        StringWriter stringWriter = new StringWriter();
+        throwable.printStackTrace(new PrintWriter(stringWriter));
+        return stringWriter.toString();
+    }
+
+    static boolean isNullOrEmpty(String string) {
+        return string == null || string.isEmpty();
     }
 
 }
