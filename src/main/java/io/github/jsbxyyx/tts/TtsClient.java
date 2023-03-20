@@ -76,6 +76,10 @@ public class TtsClient extends WebSocketClient {
         log(":: onMessage ::\r\n" + message + "\r\n");
         if (message.indexOf("Path:turn.end") > 0) {
             latch.countDown();
+            try {
+                output.close();
+            } catch (IOException ignore) {
+            }
         }
     }
 
