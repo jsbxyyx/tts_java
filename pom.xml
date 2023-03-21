@@ -24,6 +24,11 @@
             <version>3.0</version>
         </dependency>
         <dependency>
+            <groupId>net.java.dev.designgridlayout</groupId>
+            <artifactId>designgridlayout</artifactId>
+            <version>1.11</version>
+        </dependency>
+        <dependency>
             <groupId>com.googlecode.soundlibs</groupId>
             <artifactId>mp3spi</artifactId>
             <version>1.9.5.4</version>

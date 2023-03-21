@@ -27,6 +27,16 @@ public class TtsClient extends WebSocketClient {
     private static String req_id = UUID.randomUUID().toString().replace("-", "").toUpperCase();
     private static final byte[] sep = "Path:audio\r\n".getBytes(StandardCharsets.UTF_8);
 
+    public static String defaultSsml = "<speak xmlns=\"http://www.w3.org/2001/10/synthesis\" xmlns:mstts=\"http://www.w3.org/2001/mstts\" xmlns:emo=\"http://www.w3.org/2009/10/emotionml\" version=\"1.0\" xml:lang=\"en-US\">\n" +
+            "<voice name=\"zh-CN-XiaoxiaoNeural\">\n" +
+            "<mstts:express-as style=\"general\" role=\"Default\">\n" +
+            "<prosody rate=\"0%\" pitch=\"0%\">\n" +
+            "你可将此文本替换为所需的任何文本。\n" +
+            "</prosody>\n" +
+            "</mstts:express-as>\n" +
+            "</voice>\n" +
+            "</speak>";
+
     private final CountDownLatch latch = new CountDownLatch(1);
     private String x_time;
     private FileOutputStream output;
@@ -101,11 +111,15 @@ public class TtsClient extends WebSocketClient {
     @Override
     public void onClose(int code, String reason, boolean remote) {
         log(":: onClose ::\r\n" + code + " :: " + reason + " :: " + remote + "\r\n");
+        if (remote) {
+            latch.countDown();
+        }
     }
 
     @Override
     public void onError(Exception ex) {
         log(":: onError ::\r\n" + getStackTraceAsString(ex) + "\r\n");
+        latch.countDown();
     }
 
     void payload_1() {
@@ -126,13 +140,7 @@ public class TtsClient extends WebSocketClient {
 
     void payload_3() {
         if (isNullOrEmpty(ssml)) {
-            this.ssml = "<speak xmlns=\"http://www.w3.org/2001/10/synthesis\" xmlns:mstts=\"http://www.w3.org/2001/mstts\" xmlns:emo=\"http://www.w3.org/2009/10/emotionml\" version=\"1.0\" xml:lang=\"en-US\">\n" +
-                    "<voice name=\"zh-CN-XiaoxiaoNeural\">\n" +
-                    "<prosody rate=\"0%\" pitch=\"0%\">\n" +
-                    "Java编程思想 第4版\n" +
-                    "</prosody>\n" +
-                    "</voice>\n" +
-                    "</speak>";
+            this.ssml = defaultSsml;
         }
         String payload_3 = ssml;
         String message_3 = "Path: ssml\r\nX-RequestId: " + req_id + "\r\nX-Timestamp: " +
@@ -173,6 +181,7 @@ public class TtsClient extends WebSocketClient {
             }
             log.append(str);
             log.setCaretPosition(log.getDocument().getLength());
+            log.repaint();
         }
         System.out.println(str);
     }
