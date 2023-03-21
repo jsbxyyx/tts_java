@@ -6,11 +6,7 @@ import javazoom.jl.player.Player;
 import net.java.dev.designgridlayout.DesignGridLayout;
 
 import javax.swing.*;
-import javax.swing.event.ChangeEvent;
-import javax.swing.event.ChangeListener;
 import java.awt.*;
-import java.awt.event.ItemEvent;
-import java.awt.event.ItemListener;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -84,12 +80,9 @@ public class Main extends JFrame {
             for (ComboBoxItem item : langList) {
                 langBox.addItem(item);
             }
-            langBox.addItemListener(new ItemListener() {
-                @Override
-                public void itemStateChanged(ItemEvent e) {
-                    ComboBoxItem item = (ComboBoxItem) e.getItem();
-                    langText.setText(item.getKey());
-                }
+            langBox.addItemListener(e -> {
+                ComboBoxItem item = (ComboBoxItem) e.getItem();
+                langText.setText(item.getKey());
             });
             langText = new JTextField();
             langText.setText(((ComboBoxItem) langBox.getSelectedItem()).getKey());
@@ -104,12 +97,9 @@ public class Main extends JFrame {
             for (ComboBoxItem item : voiceList) {
                 voiceBox.addItem(item);
             }
-            voiceBox.addItemListener(new ItemListener() {
-                @Override
-                public void itemStateChanged(ItemEvent e) {
-                    ComboBoxItem item = (ComboBoxItem) e.getItem();
-                    voiceText.setText(item.getKey());
-                }
+            voiceBox.addItemListener(e -> {
+                ComboBoxItem item = (ComboBoxItem) e.getItem();
+                voiceText.setText(item.getKey());
             });
             voiceText = new JTextField(columns);
             voiceText.setText(((ComboBoxItem) voiceBox.getSelectedItem()).getKey());
@@ -124,12 +114,9 @@ public class Main extends JFrame {
             for (ComboBoxItem item : styleList) {
                 styleBox.addItem(item);
             }
-            styleBox.addItemListener(new ItemListener() {
-                @Override
-                public void itemStateChanged(ItemEvent e) {
-                    ComboBoxItem item = (ComboBoxItem) e.getItem();
-                    styleText.setText(item.getKey());
-                }
+            styleBox.addItemListener(e -> {
+                ComboBoxItem item = (ComboBoxItem) e.getItem();
+                styleText.setText(item.getKey());
             });
             styleText = new JTextField(columns);
             styleText.setText(((ComboBoxItem) styleBox.getSelectedItem()).getKey());
@@ -140,11 +127,8 @@ public class Main extends JFrame {
             layout.emptyRow();
 
             rateSlider = new JSlider(-100, 200, 0);
-            rateSlider.addChangeListener(new ChangeListener() {
-                @Override
-                public void stateChanged(ChangeEvent e) {
-                    rateText.setText(((JSlider) e.getSource()).getValue() + "");
-                }
+            rateSlider.addChangeListener(e -> {
+                rateText.setText(((JSlider) e.getSource()).getValue() + "");
             });
             rateText = new JTextField(columns);
             rateText.setText(rateSlider.getValue() + "");
@@ -154,11 +138,8 @@ public class Main extends JFrame {
             layout.emptyRow();
 
             pitchSlider = new JSlider(-50, 50, 0);
-            pitchSlider.addChangeListener(new ChangeListener() {
-                @Override
-                public void stateChanged(ChangeEvent e) {
-                    pitchText.setText(((JSlider) e.getSource()).getValue() + "");
-                }
+            pitchSlider.addChangeListener(e -> {
+                pitchText.setText(((JSlider) e.getSource()).getValue() + "");
             });
             pitchText = new JTextField(columns);
             pitchText.setText(pitchSlider.getValue() + "");
