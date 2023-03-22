@@ -1,7 +1,13 @@
 package io.github.jsbxyyx.tts;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.List;
+import java.util.Properties;
 
 public class ComboBoxItem {
 
@@ -9,15 +15,28 @@ public class ComboBoxItem {
     private static final List<ComboBoxItem> VOICE_LIST = new ArrayList<>();
     private static final List<ComboBoxItem> STYLE_LIST = new ArrayList<>();
 
+    private static final Properties prop = new Properties();
+
     static {
-        LANG_LIST.add(new ComboBoxItem("zh-CN", "中文（普通话，简体）"));
+        load();
 
-        VOICE_LIST.add(new ComboBoxItem("XiaoxiaoNeural", "晓晓（女）"));
-        VOICE_LIST.add(new ComboBoxItem("XiaochenNeural", "晓辰（女）"));
-        VOICE_LIST.add(new ComboBoxItem("YunxiNeural", "云希（男）"));
-        VOICE_LIST.add(new ComboBoxItem("sichuan-YunxiNeural", "云希（男）四川话"));
+        List<String> langs = getPropertyList("lang");
+        for (String value : langs) {
+            String[] split = value.split("\\,");
+            LANG_LIST.add(new ComboBoxItem(split[0].trim(), split[1].trim()));
+        }
 
-        STYLE_LIST.add(new ComboBoxItem("general", "普通"));
+        List<String> voices = getPropertyList("voice");
+        for (String value : voices) {
+            String[] split = value.split("\\,");
+            VOICE_LIST.add(new ComboBoxItem(split[0].trim(), split[1].trim()));
+        }
+
+        List<String> styles = getPropertyList("style");
+        for (String value : styles) {
+            String[] split = value.split("\\,");
+            STYLE_LIST.add(new ComboBoxItem(split[0].trim(), split[1].trim()));
+        }
     }
 
     public static List<ComboBoxItem> getLangList() {
@@ -30,6 +49,23 @@ public class ComboBoxItem {
 
     public static List<ComboBoxItem> getStyleList() {
         return new ArrayList<>(STYLE_LIST);
+    }
+
+    private static void load() {
+        try (InputStream input = Thread.currentThread().getContextClassLoader().getResourceAsStream("application.properties")) {
+            prop.load(new InputStreamReader(input, StandardCharsets.UTF_8));
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private static List<String> getPropertyList(String key) {
+        List<String> result = new LinkedList<>();
+        String value;
+        for (int i = 0; (value = prop.getProperty(key + "." + i)) != null; i++) {
+            result.add(value);
+        }
+        return result;
     }
 
     private final String key;
