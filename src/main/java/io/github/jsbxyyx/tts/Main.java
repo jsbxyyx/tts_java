@@ -87,7 +87,7 @@ public class Main extends JFrame {
             langText = new JTextField();
             langText.setText(((ComboBoxItem) langBox.getSelectedItem()).getKey());
 
-            layout.row().center().add(new JLabel("Language"));
+            layout.row().center().add(new JLabel("Language(语言)"));
             layout.row().center().add(langBox);
             layout.row().center().add(langText);
             layout.emptyRow();
@@ -104,7 +104,7 @@ public class Main extends JFrame {
             voiceText = new JTextField(columns);
             voiceText.setText(((ComboBoxItem) voiceBox.getSelectedItem()).getKey());
 
-            layout.row().center().add(new JLabel("Voice"));
+            layout.row().center().add(new JLabel("Voice(语音)"));
             layout.row().center().add(voiceBox);
             layout.row().center().add(voiceText);
             layout.emptyRow();
@@ -121,7 +121,7 @@ public class Main extends JFrame {
             styleText = new JTextField(columns);
             styleText.setText(((ComboBoxItem) styleBox.getSelectedItem()).getKey());
 
-            layout.row().center().add(new JLabel("Style"));
+            layout.row().center().add(new JLabel("Style(风格)"));
             layout.row().center().add(styleBox);
             layout.row().center().add(styleText);
             layout.emptyRow();
@@ -132,7 +132,7 @@ public class Main extends JFrame {
             });
             rateText = new JTextField(columns);
             rateText.setText(rateSlider.getValue() + "");
-            layout.row().center().add(new JLabel("Rate"));
+            layout.row().center().add(new JLabel("Rate(语速)"));
             layout.row().center().add(rateSlider);
             layout.row().center().add(rateText);
             layout.emptyRow();
@@ -143,7 +143,7 @@ public class Main extends JFrame {
             });
             pitchText = new JTextField(columns);
             pitchText.setText(pitchSlider.getValue() + "");
-            layout.row().center().add(new JLabel("Pitch"));
+            layout.row().center().add(new JLabel("Pitch(音调)"));
             layout.row().center().add(pitchSlider);
             layout.row().center().add(pitchText);
             layout.emptyRow();
