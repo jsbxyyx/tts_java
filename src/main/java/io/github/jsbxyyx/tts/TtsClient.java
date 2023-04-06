@@ -4,6 +4,7 @@ import org.java_websocket.client.WebSocketClient;
 import org.java_websocket.handshake.ServerHandshake;
 
 import javax.swing.*;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -39,7 +40,7 @@ public class TtsClient extends WebSocketClient {
 
     private final CountDownLatch latch = new CountDownLatch(1);
     private String x_time;
-    private FileOutputStream output;
+    private ByteArrayOutputStream output;
     private String ssml;
 
     private JTextArea log;
@@ -62,14 +63,18 @@ public class TtsClient extends WebSocketClient {
 
     public void createContent(String ssml, TtsCallback callback) throws Exception {
         this.ssml = ssml;
-        File file = new File(base_dir + "/tts-" + getFilename() + ".mp3");
-        output = new FileOutputStream(file, true);
+        output = new ByteArrayOutputStream();
         connect();
         latch.await();
         close();
-        log(":: file :: \r\n" + file.getAbsolutePath() + "\r\n");
-        if (callback != null) {
-            callback.call(file);
+        if (output.size() > 0) {
+            File file = new File(base_dir + "/tts-" + getFilename() + ".mp3");
+            try (FileOutputStream out = new FileOutputStream(file)) {
+                output.writeTo(out);
+            }
+            if (callback != null) {
+                callback.call(output.toByteArray());
+            }
         }
         reset();
     }
@@ -111,7 +116,7 @@ public class TtsClient extends WebSocketClient {
     @Override
     public void onClose(int code, String reason, boolean remote) {
         log(":: onClose ::\r\n" + code + " :: " + reason + " :: " + remote + "\r\n");
-        if (remote) {
+        if (code != 1000) {
             latch.countDown();
         }
     }
@@ -181,7 +186,6 @@ public class TtsClient extends WebSocketClient {
             }
             log.append(str);
             log.setCaretPosition(log.getDocument().getLength());
-            log.repaint();
         }
         System.out.println(str);
     }

@@ -7,8 +7,7 @@ import net.java.dev.designgridlayout.DesignGridLayout;
 
 import javax.swing.*;
 import java.awt.*;
-import java.io.File;
-import java.io.FileInputStream;
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.util.List;
 
@@ -40,7 +39,7 @@ public class Main extends JFrame {
     private JButton resetBtn;
 
     int columns = 15;
-    private File playFile;
+    private byte[] playFile;
 
     public Main() {
         setSize(850, 600);
@@ -164,8 +163,8 @@ public class Main extends JFrame {
             playBtn.setEnabled(false);
             playBtn.addActionListener(e -> {
                 new Thread(() -> {
-                    try {
-                        Player player = new Player(new FileInputStream(playFile));
+                    try (ByteArrayInputStream input = new ByteArrayInputStream(playFile)) {
+                        Player player = new Player(input);
                         player.play();
                     } catch (JavaLayerException ex) {
                         ex.printStackTrace();
