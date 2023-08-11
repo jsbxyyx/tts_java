@@ -22,7 +22,7 @@ import java.util.concurrent.CountDownLatch;
 /**
  * @author jsbxyyx
  */
-public class TtsClient extends WebSocketClient {
+public class TTSClient1 extends WebSocketClient {
 
     private static final String base_dir = System.getProperty("tts.output.dir", System.getProperty("user.home"));
     private static String req_id = UUID.randomUUID().toString().replace("-", "").toUpperCase();
@@ -45,12 +45,12 @@ public class TtsClient extends WebSocketClient {
 
     private JTextArea log;
 
-    public TtsClient setLog(JTextArea log) {
+    public TTSClient1 setLog(JTextArea log) {
         this.log = log;
         return this;
     }
 
-    public TtsClient() throws Exception {
+    public TTSClient1() throws Exception {
         super(new URI("wss://eastus.api.speech.microsoft.com/cognitiveservices/websocket/v1?TrafficType=AzureDemo&Authorization=bearer%20undefined&X-ConnectionId="
                         + req_id),
                 new HashMap() {
@@ -61,7 +61,7 @@ public class TtsClient extends WebSocketClient {
                 });
     }
 
-    public void createContent(String ssml, TtsCallback callback) throws Exception {
+    public void createContent(String ssml, TTSCallback callback) throws Exception {
         this.ssml = ssml;
         output = new ByteArrayOutputStream();
         connect();
@@ -102,7 +102,7 @@ public class TtsClient extends WebSocketClient {
     public void onMessage(ByteBuffer bytes) {
         byte[] rawData = bytes.array();
         log(":: onMessage blob :: " + rawData.length + "\r\n");
-        int index = Bytes.indexOf(rawData, sep);
+        int index = indexOf(rawData, sep);
         byte[] data = new byte[rawData.length - (index + sep.length)];
         System.arraycopy(rawData, index + sep.length, data, 0, data.length);
         try {
@@ -177,6 +177,24 @@ public class TtsClient extends WebSocketClient {
     String getFilename() {
         String xTime = getXTime();
         return xTime.replace(":", "-").replace(".", "-");
+    }
+
+    static int indexOf(byte[] array, byte[] target) {
+        if (array == null) throw new NullPointerException("array");
+        if (target == null) throw new NullPointerException("target");
+        if (target.length == 0) {
+            return 0;
+        }
+        outer:
+        for (int i = 0; i < array.length - target.length + 1; i++) {
+            for (int j = 0; j < target.length; j++) {
+                if (array[i + j] != target[j]) {
+                    continue outer;
+                }
+            }
+            return i;
+        }
+        return -1;
     }
 
     void log(String str) {

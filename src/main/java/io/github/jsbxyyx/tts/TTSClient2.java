@@ -3,6 +3,7 @@ package io.github.jsbxyyx.tts;
 import org.java_websocket.client.WebSocketClient;
 import org.java_websocket.handshake.ServerHandshake;
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.net.URI;
@@ -11,17 +12,19 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.text.SimpleDateFormat;
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
 public class TTSClient2 extends WebSocketClient {
 
-    private List<byte[]> buffers = new ArrayList<>();
-    private int total = 0;
+    private ByteArrayOutputStream buffers = new ByteArrayOutputStream(1024);
+    private CompletableFuture<ByteArrayOutputStream> cf;
 
-    public TTSClient2(URI serverUri, Map<String, String> httpHeaders) {
+    public TTSClient2(URI serverUri, Map<String, String> httpHeaders, CompletableFuture<ByteArrayOutputStream> cf) {
         // wss://speech.platform.bing.com/consumer/speech/synthesize/readaloud/edge/v1?TrustedClientToken=6A5AA1D4EAFF4E9FB37E23D68491D6F4
         // https://speech.platform.bing.com/consumer/speech/synthesize/readaloud/voices/list?trustedclienttoken=6A5AA1D4EAFF4E9FB37E23D68491D6F4
         super(serverUri, httpHeaders);
+        this.cf = cf;
     }
 
     @Override
@@ -43,24 +46,12 @@ public class TTSClient2 extends WebSocketClient {
         log("onMessage:\r\n" + text);
         if (text.contains("turn.start")) {
             // （新的）音频流开始传输开始，清空重置buffer
-            buffers.clear();
-            total = 0;
+            buffers.reset();
         } else if (text.contains("turn.end")) {
             // 音频流结束，写为文件
             try {
-                byte[] destData = new byte[total];
-                int pos = 0;
-                for (byte[] data : buffers) {
-                    System.arraycopy(data, 0, destData, pos, data.length);
-                    pos += data.length;
-                }
-                String name = System.currentTimeMillis() + ".mp3";
-                Files.write(
-                        new File(System.getProperty("user.dir") + "/" + name).toPath(),
-                        destData
-                );
-                log("write " + name);
-                close(0);
+                cf.complete(buffers);
+                close(1000);
             } catch (Exception e) {
                 log(e.getMessage());
             }
@@ -73,22 +64,25 @@ public class TTSClient2 extends WebSocketClient {
         // Path:audio\r\n
         byte[] rawData = bytes.array();
         byte[] sep = "Path:audio\r\n".getBytes(StandardCharsets.UTF_8);
-        int index = Bytes.indexOf(rawData, sep);
+        int index = indexOf(rawData, sep);
         byte[] data = new byte[rawData.length - (index + sep.length)];
         System.arraycopy(rawData, index + sep.length, data, 0, data.length);
-        buffers.add(data);
-        total += data.length;
+        try {
+            buffers.write(data);
+        } catch (IOException ignore) {
+        }
         log(new String(rawData, StandardCharsets.UTF_8));
     }
 
     @Override
-    public void onClose(int i, String s, boolean b) {
-        log("onClose");
+    public void onClose(int code, String reason, boolean remote) {
+        log("onClose code:" + code + ", reason:" + reason + ", remote:" + remote);
     }
 
     @Override
     public void onError(Exception e) {
-        log("onClose");
+        cf.complete(new ByteArrayOutputStream());
+        log("onClose e:" + e.getMessage());
     }
 
     static void log(String str) {
@@ -103,7 +97,26 @@ public class TTSClient2 extends WebSocketClient {
         return new SimpleDateFormat("EEE MMM dd yyyy HH:mm:ss 'GMT'Z").format(new Date());
     }
 
-    public static void main(String[] args) throws Exception {
+    static int indexOf(byte[] array, byte[] target) {
+        if (array == null) throw new NullPointerException("array");
+        if (target == null) throw new NullPointerException("target");
+        if (target.length == 0) {
+            return 0;
+        }
+        outer:
+        for (int i = 0; i < array.length - target.length + 1; i++) {
+            for (int j = 0; j < target.length; j++) {
+                if (array[i + j] != target[j]) {
+                    continue outer;
+                }
+            }
+            return i;
+        }
+        return -1;
+    }
+
+    public static ByteArrayOutputStream audioBySsml(String ssml) throws Exception {
+        CompletableFuture<ByteArrayOutputStream> cf = new CompletableFuture<>();
         // Microsoft Server Speech Text to Speech Voice (en-US, AriaNeural)
         // zh-CN-XiaoxiaoNeural
         Map<String, String> httpHeaders = new HashMap<>();
@@ -113,7 +126,17 @@ public class TTSClient2 extends WebSocketClient {
                 "wss://speech.platform.bing.com/consumer/speech/synthesize/readaloud/edge/v1" +
                         "?TrustedClientToken=6A5AA1D4EAFF4E9FB37E23D68491D6F4" +
                         "&Retry-After=200&ConnectionId=" + uuid()
-        ), httpHeaders);
+        ), httpHeaders, cf);
+        client2.connect();
+        while (!client2.isOpen()) {
+            TimeUnit.MILLISECONDS.sleep(50);
+        }
+        client2.send(ssml);
+        ByteArrayOutputStream output = cf.get(30, TimeUnit.SECONDS);
+        return output;
+    }
+
+    public static ByteArrayOutputStream audioByText(String text) throws Exception {
         final String SSML_PATTERN = "X-RequestId:%s\r\n" +
                 "Content-Type:application/ssml+xml\r\n" +
                 "X-Timestamp:%sZ\r\n" +
@@ -128,11 +151,7 @@ public class TTSClient2 extends WebSocketClient {
                 "%s" +
                 "</voice>" +
                 "</speak>";
-        client2.connect();
-        while (!client2.isOpen()) {
-            TimeUnit.SECONDS.sleep(1);
-        }
-        client2.send(String.format(
+        String ssml = String.format(
                 SSML_PATTERN,
                 uuid(),
                 date(),
@@ -141,12 +160,19 @@ public class TTSClient2 extends WebSocketClient {
                 "",
                 "+0%",
                 "+0%",
-                "你好",
+                text,
                 ""
-        ));
-        while(!client2.isClosed()) {
-            TimeUnit.SECONDS.sleep(1);
-        }
+        );
+        return audioBySsml(ssml);
+    }
+
+    public static void main(String[] args) throws Exception {
+        ByteArrayOutputStream output = audioByText("你好");
+        String name = System.currentTimeMillis() + ".mp3";
+        Files.write(new File(
+                System.getProperty("user.dir") + "/" + name
+        ).toPath(), output.toByteArray());
+        log("write " + name);
     }
 
 }

@@ -7,8 +7,9 @@ import net.java.dev.designgridlayout.DesignGridLayout;
 
 import javax.swing.*;
 import java.awt.*;
-import java.io.ByteArrayInputStream;
-import java.io.IOException;
+import java.io.*;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.List;
 
 /**
@@ -16,7 +17,10 @@ import java.util.List;
  */
 public class Main extends JFrame {
 
+    private static final String base_dir = System.getProperty("tts.output.dir", System.getProperty("user.home"));
+
     private JTextArea ssmlPane;
+    private JTextArea textPane;
     private JTextArea logPane;
 
     private JComboBox langBox;
@@ -48,15 +52,27 @@ public class Main extends JFrame {
 
         setLayout(new GridLayout(1, 0));
 
+        textPane = new JTextArea(10, 30);
+        textPane.setText("你可将此文本替换为所需的任何文本。");
+        textPane.setLineWrap(true);
+        textPane.setWrapStyleWord(true);
+        JScrollPane top1 = new JScrollPane(textPane);
+        top1.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createTitledBorder("TEXT"),
+                BorderFactory.createEmptyBorder(5, 5, 5, 5)));
 
         ssmlPane = new JTextArea(10, 30);
-        ssmlPane.setText(TtsClient.defaultSsml);
+        ssmlPane.setText(TTSClient1.defaultSsml);
         ssmlPane.setLineWrap(true);
         ssmlPane.setWrapStyleWord(true);
-        JScrollPane top = new JScrollPane(ssmlPane);
-        top.setBorder(BorderFactory.createCompoundBorder(
+        JScrollPane top2 = new JScrollPane(ssmlPane);
+        top2.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createTitledBorder("SSML"),
                 BorderFactory.createEmptyBorder(5, 5, 5, 5)));
+
+        JTabbedPane tabbedPane = new JTabbedPane();
+        tabbedPane.add("text", top1);
+        tabbedPane.add("ssml", top2);
 
         logPane = new JTextArea(10, 30);
         logPane.setEditable(false);
@@ -67,7 +83,7 @@ public class Main extends JFrame {
                 BorderFactory.createTitledBorder("Log"),
                 BorderFactory.createEmptyBorder(5, 5, 5, 5)));
 
-        JSplitPane leftPane = new JSplitPane(JSplitPane.VERTICAL_SPLIT, top, bottom);
+        JSplitPane leftPane = new JSplitPane(JSplitPane.VERTICAL_SPLIT, tabbedPane, bottom);
         leftPane.setResizeWeight(0.5);
 
         JPanel rightPane = new JPanel();
@@ -150,10 +166,19 @@ public class Main extends JFrame {
             generateBtn = new JButton("Generate");
             generateBtn.addActionListener(e -> {
                 try {
-                    new TtsClient().setLog(logPane).createContent(ssmlPane.getText(), (f) -> {
+                    ByteArrayOutputStream output = TTSClient2.audioByText(textPane.getText());
+                    if (output.size() > 0) {
+                        String name = new SimpleDateFormat("yyyyMMddHHmmssSSS").format(new Date());
+                        File file = new File(base_dir + "/tts-" + name + ".mp3");
+                        logPane.append("write file ::: " + file.getAbsolutePath());
+                        try (FileOutputStream out = new FileOutputStream(file)) {
+                            output.writeTo(out);
+                        }
                         playBtn.setEnabled(true);
-                        playFile = f;
-                    });
+                        playFile = output.toByteArray();
+                    } else {
+                        logPane.append("generate audio failed.");
+                    }
                 } catch (Exception ex) {
                     ex.printStackTrace();
                 }
@@ -176,7 +201,7 @@ public class Main extends JFrame {
 
             resetBtn = new JButton("Reset");
             resetBtn.addActionListener(e -> {
-                ssmlPane.setText(TtsClient.defaultSsml);
+                ssmlPane.setText(TTSClient1.defaultSsml);
                 logPane.setText("");
             });
 
