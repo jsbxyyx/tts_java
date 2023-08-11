@@ -102,7 +102,7 @@ public class TtsClient extends WebSocketClient {
     public void onMessage(ByteBuffer bytes) {
         byte[] rawData = bytes.array();
         log(":: onMessage blob :: " + rawData.length + "\r\n");
-        int index = indexOf(rawData, sep);
+        int index = Bytes.indexOf(rawData, sep);
         byte[] data = new byte[rawData.length - (index + sep.length)];
         System.arraycopy(rawData, index + sep.length, data, 0, data.length);
         try {
@@ -193,24 +193,6 @@ public class TtsClient extends WebSocketClient {
     void reset() {
         req_id = UUID.randomUUID().toString().replace("-", "").toUpperCase();
         x_time = null;
-    }
-
-    static int indexOf(byte[] array, byte[] target) {
-        if (array == null) throw new NullPointerException("array");
-        if (target == null) throw new NullPointerException("target");
-        if (target.length == 0) {
-            return 0;
-        }
-        outer:
-        for (int i = 0; i < array.length - target.length + 1; i++) {
-            for (int j = 0; j < target.length; j++) {
-                if (array[i + j] != target[j]) {
-                    continue outer;
-                }
-            }
-            return i;
-        }
-        return -1;
     }
 
     static String getStackTraceAsString(Throwable throwable) {
