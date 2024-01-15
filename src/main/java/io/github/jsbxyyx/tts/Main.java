@@ -7,7 +7,11 @@ import net.java.dev.designgridlayout.DesignGridLayout;
 
 import javax.swing.*;
 import java.awt.*;
-import java.io.*;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
@@ -166,7 +170,8 @@ public class Main extends JFrame {
             generateBtn = new JButton("Generate");
             generateBtn.addActionListener(e -> {
                 try {
-                    ByteArrayOutputStream output = TTSClient2.audioByText(textPane.getText());
+                    ByteArrayOutputStream output = TTSClient2.audioByText(textPane.getText(),
+                            "zh-CN", "zh-CN-YunxiNeural");
                     if (output.size() > 0) {
                         String name = new SimpleDateFormat("yyyyMMddHHmmssSSS").format(new Date());
                         File file = new File(base_dir + "/tts-" + name + ".mp3");

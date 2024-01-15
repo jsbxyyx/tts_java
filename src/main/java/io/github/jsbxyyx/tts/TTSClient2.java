@@ -136,7 +136,7 @@ public class TTSClient2 extends WebSocketClient {
         return output;
     }
 
-    public static ByteArrayOutputStream audioByText(String text) throws Exception {
+    public static ByteArrayOutputStream audioByText(String text, String lang, String voiceName) throws Exception {
         final String SSML_PATTERN = "X-RequestId:%s\r\n" +
                 "Content-Type:application/ssml+xml\r\n" +
                 "X-Timestamp:%sZ\r\n" +
@@ -155,8 +155,8 @@ public class TTSClient2 extends WebSocketClient {
                 SSML_PATTERN,
                 uuid(),
                 date(),
-                "zh-CN",
-                "zh-CN-XiaoxiaoNeural",
+                lang,
+                voiceName,
                 "",
                 "+0%",
                 "+0%",
@@ -167,7 +167,7 @@ public class TTSClient2 extends WebSocketClient {
     }
 
     public static void main(String[] args) throws Exception {
-        ByteArrayOutputStream output = audioByText("你好");
+        ByteArrayOutputStream output = audioByText("你好", "zh-CN", "zh-CN-XiaoxiaoNeural");
         String name = System.currentTimeMillis() + ".mp3";
         Files.write(new File(
                 System.getProperty("user.dir") + "/" + name
