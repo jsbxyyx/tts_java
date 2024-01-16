@@ -11,12 +11,22 @@ import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.text.SimpleDateFormat;
-import java.util.*;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
 public class TTSClient2 extends WebSocketClient {
 
+    public static String defaultSsml = "<speak version='1.0' xmlns='http://www.w3.org/2001/10/synthesis' xmlns:mstts='https://www.w3.org/2001/mstts' xml:lang='zh-CN'>\r\n" +
+            "<voice name='zh-CN-YunxiNeural'>\r\n" +
+            "<prosody pitch='+0Hz' rate='+0%' volume='+0%'>\n" +
+            "你可将此文本替换为所需的任何文本。\n" +
+            "</prosody>\n" +
+            "</voice>\n" +
+            "</speak>";
     private ByteArrayOutputStream buffers = new ByteArrayOutputStream(1024);
     private CompletableFuture<ByteArrayOutputStream> cf;
 
@@ -116,6 +126,12 @@ public class TTSClient2 extends WebSocketClient {
     }
 
     public static ByteArrayOutputStream audioBySsml(String ssml) throws Exception {
+        ssml = String.format("X-RequestId:%s\r\n" +
+                "Content-Type:application/ssml+xml\r\n" +
+                "X-Timestamp:%sZ\r\n" +
+                "Path:ssml\r\n" +
+                "\r\n%s", uuid(), date(), ssml);
+        log("ssml:[" + ssml + "]");
         CompletableFuture<ByteArrayOutputStream> cf = new CompletableFuture<>();
         // Microsoft Server Speech Text to Speech Voice (en-US, AriaNeural)
         // zh-CN-XiaoxiaoNeural
@@ -136,38 +152,32 @@ public class TTSClient2 extends WebSocketClient {
         return output;
     }
 
-    public static ByteArrayOutputStream audioByText(String text, String lang, String voiceName) throws Exception {
-        final String SSML_PATTERN = "X-RequestId:%s\r\n" +
-                "Content-Type:application/ssml+xml\r\n" +
-                "X-Timestamp:%sZ\r\n" +
-                "Path:ssml\r\n" +
-                "\r\n" +
+    public static ByteArrayOutputStream audioByText(String text, String lang, String voiceName, String rate, String volume) throws Exception {
+        if (lang == null) lang = "zh-CN";
+        if (voiceName == null) voiceName = "zh-CN-XiaoxiaoNeural";
+        if (rate == null) rate = "+0%";
+        if (volume == null) volume = "+0%";
+        final String SPEAK_PATTERN =
                 "<speak version='1.0' xmlns='http://www.w3.org/2001/10/synthesis' xmlns:mstts='https://www.w3.org/2001/mstts' xml:lang='%s'>\r\n" +
                 "<voice name='%s'>\r\n" +
-                "%s" +
                 "<prosody pitch='+0Hz' rate='%s' volume='%s'>" +
                 "%s" +
                 "</prosody>" +
-                "%s" +
                 "</voice>" +
                 "</speak>";
         String ssml = String.format(
-                SSML_PATTERN,
-                uuid(),
-                date(),
+                SPEAK_PATTERN,
                 lang,
                 voiceName,
-                "",
-                "+0%",
-                "+0%",
-                text,
-                ""
+                rate,
+                volume,
+                text
         );
         return audioBySsml(ssml);
     }
 
     public static void main(String[] args) throws Exception {
-        ByteArrayOutputStream output = audioByText("你好", "zh-CN", "zh-CN-XiaoxiaoNeural");
+        ByteArrayOutputStream output = audioByText("你好", null, null, null, null);
         String name = System.currentTimeMillis() + ".mp3";
         Files.write(new File(
                 System.getProperty("user.dir") + "/" + name

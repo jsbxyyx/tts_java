@@ -1,6 +1,5 @@
 package io.github.jsbxyyx.tts;
 
-import com.formdev.flatlaf.FlatLightLaf;
 import javazoom.jl.decoder.JavaLayerException;
 import javazoom.jl.player.Player;
 import net.java.dev.designgridlayout.DesignGridLayout;
@@ -21,8 +20,9 @@ import java.util.List;
  */
 public class Main extends JFrame {
 
-    private static final String base_dir = System.getProperty("tts.output.dir", System.getProperty("user.home"));
+    private static final String base_dir = System.getProperty("tts.output.dir", System.getProperty("user.dir"));
 
+    private JTabbedPane tabbedPane;
     private JTextArea ssmlPane;
     private JTextArea textPane;
     private JTextArea logPane;
@@ -51,7 +51,7 @@ public class Main extends JFrame {
 
     public Main() {
         setSize(850, 600);
-        setTitle("TTS QQ:551304760");
+        setTitle("TTS QQ Group: 551304760");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 
         setLayout(new GridLayout(1, 0));
@@ -66,7 +66,7 @@ public class Main extends JFrame {
                 BorderFactory.createEmptyBorder(5, 5, 5, 5)));
 
         ssmlPane = new JTextArea(10, 30);
-        ssmlPane.setText(TTSClient1.defaultSsml);
+        ssmlPane.setText(TTSClient2.defaultSsml);
         ssmlPane.setLineWrap(true);
         ssmlPane.setWrapStyleWord(true);
         JScrollPane top2 = new JScrollPane(ssmlPane);
@@ -74,7 +74,7 @@ public class Main extends JFrame {
                 BorderFactory.createTitledBorder("SSML"),
                 BorderFactory.createEmptyBorder(5, 5, 5, 5)));
 
-        JTabbedPane tabbedPane = new JTabbedPane();
+        tabbedPane = new JTabbedPane();
         tabbedPane.add("text", top1);
         tabbedPane.add("ssml", top2);
 
@@ -91,6 +91,9 @@ public class Main extends JFrame {
         leftPane.setResizeWeight(0.5);
 
         JPanel rightPane = new JPanel();
+        rightPane.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createTitledBorder("Assist"),
+                BorderFactory.createEmptyBorder(5, 5, 5, 5)));
         {
             DesignGridLayout layout = new DesignGridLayout(rightPane);
 
@@ -170,12 +173,19 @@ public class Main extends JFrame {
             generateBtn = new JButton("Generate");
             generateBtn.addActionListener(e -> {
                 try {
-                    ByteArrayOutputStream output = TTSClient2.audioByText(textPane.getText(),
-                            "zh-CN", "zh-CN-YunxiNeural");
+                    int selectedIndex = tabbedPane.getSelectedIndex();
+                    ByteArrayOutputStream output = null;
+                    if (selectedIndex == 0) {
+                        output = TTSClient2.audioByText(textPane.getText(),
+                                "zh-CN", "zh-CN-YunxiNeural", "+0%", "+1000%");
+                    } else {
+                        output = TTSClient2.audioBySsml(ssmlPane.getText());
+                    }
+
                     if (output.size() > 0) {
                         String name = new SimpleDateFormat("yyyyMMddHHmmssSSS").format(new Date());
                         File file = new File(base_dir + "/tts-" + name + ".mp3");
-                        logPane.append("write file ::: " + file.getAbsolutePath());
+                        logPane.append("write file ::: " + file.getAbsolutePath() + "\n");
                         try (FileOutputStream out = new FileOutputStream(file)) {
                             output.writeTo(out);
                         }
@@ -227,7 +237,7 @@ public class Main extends JFrame {
     }
 
     public static void main(String[] args) {
-        FlatLightLaf.setup();
+//        FlatLightLaf.setup();
         SwingUtilities.invokeLater(() -> {
             new Main().launch();
         });
