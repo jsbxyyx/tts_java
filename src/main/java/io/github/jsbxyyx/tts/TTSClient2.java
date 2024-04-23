@@ -21,7 +21,7 @@ import java.util.concurrent.TimeUnit;
 public class TTSClient2 extends WebSocketClient {
 
     public static String defaultSsml = "<speak version='1.0' xmlns='http://www.w3.org/2001/10/synthesis' xmlns:mstts='https://www.w3.org/2001/mstts' xml:lang='zh-CN'>\r\n" +
-            "<voice name='zh-CN-YunxiNeural'>\r\n" +
+            "<voice name='zh-CN-XiaoxiaoNeural'>\r\n" +
             "<prosody pitch='+0Hz' rate='+0%' volume='+0%'>\n" +
             "你可将此文本替换为所需的任何文本。\n" +
             "</prosody>\n" +
@@ -30,11 +30,17 @@ public class TTSClient2 extends WebSocketClient {
     private ByteArrayOutputStream buffers = new ByteArrayOutputStream(1024);
     private CompletableFuture<ByteArrayOutputStream> cf;
 
+    private static Appendable appendable;
+
     public TTSClient2(URI serverUri, Map<String, String> httpHeaders, CompletableFuture<ByteArrayOutputStream> cf) {
         // wss://speech.platform.bing.com/consumer/speech/synthesize/readaloud/edge/v1?TrustedClientToken=6A5AA1D4EAFF4E9FB37E23D68491D6F4
         // https://speech.platform.bing.com/consumer/speech/synthesize/readaloud/voices/list?trustedclienttoken=6A5AA1D4EAFF4E9FB37E23D68491D6F4
         super(serverUri, httpHeaders);
         this.cf = cf;
+    }
+
+    public static void setAppendable(Appendable appendable) {
+        TTSClient2.appendable = appendable;
     }
 
     @Override
@@ -81,12 +87,15 @@ public class TTSClient2 extends WebSocketClient {
             buffers.write(data);
         } catch (IOException ignore) {
         }
-        log(new String(rawData, StandardCharsets.UTF_8));
+        log(encodeHex(rawData));
     }
 
     @Override
     public void onClose(int code, String reason, boolean remote) {
         log("onClose code:" + code + ", reason:" + reason + ", remote:" + remote);
+        if (code != 1000) {
+            cf.complete(new ByteArrayOutputStream());
+        }
     }
 
     @Override
@@ -97,6 +106,12 @@ public class TTSClient2 extends WebSocketClient {
 
     static void log(String str) {
         System.out.println(str);
+        if (appendable != null) {
+            try {
+                appendable.append(str).append("\n");
+            } catch (IOException ignore) {
+            }
+        }
     }
 
     static String uuid() {
@@ -125,6 +140,17 @@ public class TTSClient2 extends WebSocketClient {
         return -1;
     }
 
+    static String encodeHex(final byte[] data) {
+        char[] DIGITS_LOWER = { '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f' };
+        final int dataLength = data.length;
+        final char[] out = new char[dataLength << 1];
+        for (int i = 0, j = 0; i < dataLength; i++) {
+            out[j++] = DIGITS_LOWER[(0xF0 & data[i]) >>> 4];
+            out[j++] = DIGITS_LOWER[0x0F & data[i]];
+        }
+        return new String(out);
+    }
+
     public static ByteArrayOutputStream audioBySsml(String ssml) throws Exception {
         ssml = String.format("X-RequestId:%s\r\n" +
                 "Content-Type:application/ssml+xml\r\n" +
@@ -146,6 +172,10 @@ public class TTSClient2 extends WebSocketClient {
         client2.connect();
         while (!client2.isOpen()) {
             TimeUnit.MILLISECONDS.sleep(50);
+            if (client2.isClosed()) {
+                log("client is closed.");
+                return new ByteArrayOutputStream();
+            }
         }
         client2.send(ssml);
         ByteArrayOutputStream output = cf.get(30, TimeUnit.SECONDS);

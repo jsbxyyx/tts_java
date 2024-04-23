@@ -170,6 +170,7 @@ public class Main extends JFrame {
             layout.row().center().add(pitchText);
             layout.emptyRow();
 
+            TTSClient2.setAppendable(new JTextAreaAdapter(logPane));
             generateBtn = new JButton("Generate");
             generateBtn.addActionListener(e -> {
                 try {
@@ -192,8 +193,9 @@ public class Main extends JFrame {
                         playBtn.setEnabled(true);
                         playFile = output.toByteArray();
                     } else {
-                        logPane.append("generate audio failed.");
+                        logPane.append("generate audio failed.\n");
                     }
+                    logPane.setCaretPosition(logPane.getText().length());
                 } catch (Exception ex) {
                     ex.printStackTrace();
                 }

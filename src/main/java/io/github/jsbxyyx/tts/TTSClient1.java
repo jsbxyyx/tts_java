@@ -3,7 +3,6 @@ package io.github.jsbxyyx.tts;
 import org.java_websocket.client.WebSocketClient;
 import org.java_websocket.handshake.ServerHandshake;
 
-import javax.swing.*;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
@@ -43,11 +42,10 @@ public class TTSClient1 extends WebSocketClient {
     private ByteArrayOutputStream output;
     private String ssml;
 
-    private JTextArea log;
+    private static Appendable appendable;
 
-    public TTSClient1 setLog(JTextArea log) {
-        this.log = log;
-        return this;
+    public static void setLog(Appendable appendable) {
+        TTSClient1.appendable = appendable;
     }
 
     public TTSClient1() throws Exception {
@@ -88,7 +86,7 @@ public class TTSClient1 extends WebSocketClient {
 
     @Override
     public void onMessage(String message) {
-        log(":: onMessage ::\r\n" + message + "\r\n");
+        log(":: onMessage ::\r\n" + message);
         if (message.indexOf("Path:turn.end") > 0) {
             latch.countDown();
             try {
@@ -101,7 +99,7 @@ public class TTSClient1 extends WebSocketClient {
     @Override
     public void onMessage(ByteBuffer bytes) {
         byte[] rawData = bytes.array();
-        log(":: onMessage blob :: " + rawData.length + "\r\n");
+        log(":: onMessage blob :: " + rawData.length);
         int index = indexOf(rawData, sep);
         byte[] data = new byte[rawData.length - (index + sep.length)];
         System.arraycopy(rawData, index + sep.length, data, 0, data.length);
@@ -109,13 +107,13 @@ public class TTSClient1 extends WebSocketClient {
             output.write(data);
             output.flush();
         } catch (IOException e) {
-            log(":: onMessage ::\r\n" + getStackTraceAsString(e) + "\r\n");
+            log(":: onMessage ::\r\n" + getStackTraceAsString(e));
         }
     }
 
     @Override
     public void onClose(int code, String reason, boolean remote) {
-        log(":: onClose ::\r\n" + code + " :: " + reason + " :: " + remote + "\r\n");
+        log(":: onClose ::\r\n" + code + " :: " + reason + " :: " + remote);
         if (code != 1000) {
             latch.countDown();
         }
@@ -123,7 +121,7 @@ public class TTSClient1 extends WebSocketClient {
 
     @Override
     public void onError(Exception ex) {
-        log(":: onError ::\r\n" + getStackTraceAsString(ex) + "\r\n");
+        log(":: onError ::\r\n" + getStackTraceAsString(ex));
         latch.countDown();
     }
 
@@ -132,7 +130,7 @@ public class TTSClient1 extends WebSocketClient {
         String message_1 = "Path : speech.config\r\nX-RequestId: " + req_id + "\r\nX-Timestamp: " +
                 getXTime() + "\r\nContent-Type: application/json\r\n\r\n" + payload_1;
         send(message_1);
-        log(":: payload_1 :: \r\n" + message_1 + "\r\n");
+        log(":: payload_1 :: \r\n" + message_1);
     }
 
     void payload_2() {
@@ -140,7 +138,7 @@ public class TTSClient1 extends WebSocketClient {
         String message_2 = "Path : synthesis.context\r\nX-RequestId: " + req_id + "\r\nX-Timestamp: " +
                 getXTime() + "\r\nContent-Type: application/json\r\n\r\n" + payload_2;
         send(message_2);
-        log(":: payload_2 :: \r\n" + message_2 + "\r\n");
+        log(":: payload_2 :: \r\n" + message_2);
     }
 
     void payload_3() {
@@ -151,7 +149,7 @@ public class TTSClient1 extends WebSocketClient {
         String message_3 = "Path: ssml\r\nX-RequestId: " + req_id + "\r\nX-Timestamp: " +
                 getXTime() + "\r\nContent-Type: application/ssml+xml\r\n\r\n" + payload_3;
         send(message_3);
-        log(":: payload_3 :: \r\n" + message_3 + "\r\n");
+        log(":: payload_3 :: \r\n" + message_3);
     }
 
     String getXTime() {
@@ -170,7 +168,7 @@ public class TTSClient1 extends WebSocketClient {
         int millisecond = cal.get(Calendar.MILLISECOND);
 
         x_time = String.format("%04d-%02d-%02dT%02d:%02d:%02d.%03dZ", year, month, day, hour, minute, second, millisecond);
-        log(":: time ::\r\n" + x_time + "\r\n");
+        log(":: time ::\r\n" + x_time);
         return x_time;
     }
 
@@ -198,14 +196,13 @@ public class TTSClient1 extends WebSocketClient {
     }
 
     void log(String str) {
-        if (log != null) {
-            if (log.getText().length() > 5000) {
-                log.setText(log.getText().substring(5000));
-            }
-            log.append(str);
-            log.setCaretPosition(log.getDocument().getLength());
-        }
         System.out.println(str);
+        if (appendable != null) {
+            try {
+                appendable.append(str).append("\n");
+            } catch (IOException ignore) {
+            }
+        }
     }
 
     void reset() {
