@@ -6,11 +6,7 @@ import net.java.dev.designgridlayout.DesignGridLayout;
 
 import javax.swing.*;
 import java.awt.*;
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
+import java.io.*;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
@@ -21,6 +17,22 @@ import java.util.List;
 public class Main extends JFrame {
 
     private static final String base_dir = System.getProperty("tts.output.dir", System.getProperty("user.dir"));
+
+    private static final String defaultSsml = ("<speak version='1.0' xmlns='http://www.w3.org/2001/10/synthesis' xml:lang='{lang}'>\r\n" +
+            "<voice name='{voice_name}'>\r\n" +
+            "<prosody pitch='{pitch}' rate='{rate}' volume='{volume}'>\r\n" +
+            "{text}\r\n" +
+            "</prosody>\r\n" +
+            "</voice>\r\n" +
+            "</speak>\r\n")
+            .replace("{voice_name}", "zh-CN-XiaoxiaoNeural")
+            .replace("{lang}", "zh-CN")
+            .replace("{pitch}", "+0Hz")
+            .replace("{rate}", "+0%")
+            .replace("{volume}", "+0%")
+            .replace("{text}", "你好，我是晓晓");
+
+    private static final String defaultText = "你可将此文本替换为所需的任何文本。";
 
     private JTabbedPane tabbedPane;
     private JTextArea ssmlPane;
@@ -57,7 +69,7 @@ public class Main extends JFrame {
         setLayout(new GridLayout(1, 0));
 
         textPane = new JTextArea(10, 30);
-        textPane.setText("你可将此文本替换为所需的任何文本。");
+        textPane.setText(defaultText);
         textPane.setLineWrap(true);
         textPane.setWrapStyleWord(true);
         JScrollPane top1 = new JScrollPane(textPane);
@@ -66,7 +78,7 @@ public class Main extends JFrame {
                 BorderFactory.createEmptyBorder(5, 5, 5, 5)));
 
         ssmlPane = new JTextArea(10, 30);
-        ssmlPane.setText(TTSClient2.defaultSsml);
+        ssmlPane.setText(defaultSsml);
         ssmlPane.setLineWrap(true);
         ssmlPane.setWrapStyleWord(true);
         JScrollPane top2 = new JScrollPane(ssmlPane);
@@ -170,17 +182,17 @@ public class Main extends JFrame {
             layout.row().center().add(pitchText);
             layout.emptyRow();
 
-            TTSClient2.setAppendable(new JTextAreaAdapter(logPane));
+            TTSClient.setAppendable(new JTextAreaAdapter(logPane));
             generateBtn = new JButton("Generate");
             generateBtn.addActionListener(e -> {
                 try {
                     int selectedIndex = tabbedPane.getSelectedIndex();
                     ByteArrayOutputStream output = null;
                     if (selectedIndex == 0) {
-                        output = TTSClient2.audioByText(textPane.getText(),
-                                "zh-CN", "zh-CN-YunxiNeural", "+0%", "+1000%");
+                        output = TTSClient.audioByText(textPane.getText(),
+                                "zh-CN", "zh-CN-XiaoxiaoNeural", "+0Hz", "+0%", "+1000%");
                     } else {
-                        output = TTSClient2.audioBySsml(ssmlPane.getText());
+                        output = TTSClient.audioBySsml(ssmlPane.getText());
                     }
 
                     if (output.size() > 0) {
@@ -218,7 +230,7 @@ public class Main extends JFrame {
 
             resetBtn = new JButton("Reset");
             resetBtn.addActionListener(e -> {
-                ssmlPane.setText(TTSClient1.defaultSsml);
+                ssmlPane.setText(defaultSsml);
                 logPane.setText("");
             });
 
