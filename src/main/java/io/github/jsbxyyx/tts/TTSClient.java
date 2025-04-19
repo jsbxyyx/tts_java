@@ -158,7 +158,7 @@ public class TTSClient extends WebSocketClient {
 
     static String date() {
         String format = new SimpleDateFormat("EEE MMM dd yyyy HH:mm:ss", Locale.US).format(new Date());
-        return format + "GMT+0000 (Coordinated Universal Time)";
+        return format + " GMT+0000 (Coordinated Universal Time)";
     }
 
     static String ssml_with_data(String ssml) {
@@ -279,6 +279,7 @@ public class TTSClient extends WebSocketClient {
 
     public static void main(String[] args) throws Exception {
         System.out.println(VOICE_LIST_URL);
+        System.out.println(date());
     }
 
 }
